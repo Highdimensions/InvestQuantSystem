@@ -1,0 +1,20 @@
+version: fixtures-v1
+purpose: >
+  A-share low-cost minute data-source tests. Fixtures must prevent future data,
+  supplier field leakage, silent provider repairs, and historical overwrites.
+golden_cases:
+  - id: akshare_minute_bar_contract
+    input: inline test row
+    expected: normalized closed MarketBar with provider version keys
+  - id: provider_revision_conflict
+    input: two bars with identical version key and different close
+    expected: conflict raised or quarantine record, never overwrite
+  - id: akshare_tushare_reconciliation
+    input: same symbol/timeframe with different close
+    expected: reconciliation issue, no silent correction
+  - id: akshare_adapter_minute
+    input: stubbed AKShare minute DataFrame with local market time
+    expected: normalized UTC closed MarketBar
+  - id: research_pipeline_v1
+    input: deterministic closed 1-minute bars
+    expected: SignalEvent, EvaluationTask, SignalEvaluation, report, and paper fill

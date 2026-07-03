@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Quant Signal Dashboard</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <main class="shell">
+      <aside class="sidebar" aria-label="filters">
+        <div class="brand">
+          <div class="brand-title">BS Signal</div>
+          <div class="brand-subtitle">Research-only dashboard</div>
+        </div>
+
+        <section class="panel">
+          <div class="panel-title">查询</div>
+          <label>
+            标的
+            <input id="symbol" value="300346" autocomplete="off" />
+          </label>
+          <div class="two-col">
+            <label>
+              周期
+              <select id="timeframe">
+                <option value="1m">1m</option>
+                <option value="5m">5m</option>
+                <option value="15m">15m</option>
+                <option value="30m">30m</option>
+                <option value="60m">60m</option>
+                <option value="1d">1d</option>
+              </select>
+            </label>
+            <label>
+              方向
+              <select id="direction">
+                <option value="">All</option>
+                <option value="BUY">BUY</option>
+                <option value="SELL">SELL</option>
+                <option value="HOLD">HOLD</option>
+              </select>
+            </label>
+          </div>
+          <label>
+            开始时间
+            <input id="fromTime" type="datetime-local" />
+          </label>
+          <label>
+            结束时间
+            <input id="toTime" type="datetime-local" />
+          </label>
+          <label>
+            data_source_version
+            <input id="dataSourceVersion" value="akshare-exploration-v1" autocomplete="off" />
+          </label>
+          <label>
+            as_of_version
+            <input id="asOfVersion" value="asof-research-v1" autocomplete="off" />
+          </label>
+          <button id="refreshButton" class="primary-button" type="button">刷新</button>
+        </section>
+
+        <section class="panel">
+          <div class="panel-title">策略版本</div>
+          <div id="strategyList" class="strategy-list"></div>
+        </section>
+
+        <section class="panel">
+          <div class="panel-title">Shadow Run</div>
+          <button id="startShadowButton" type="button">启动</button>
+          <div id="shadowRuns" class="run-list"></div>
+        </section>
+      </aside>
+
+      <section class="workspace">
+        <header class="topbar">
+          <div>
+            <h1>不同策略 BS 点</h1>
+            <p>研究信号、回放、回测与本地影子运行；不连接真实券商账户，不自动执行真实交易。</p>
+          </div>
+          <div id="summary" class="summary"></div>
+        </header>
+
+        <section class="chart-band">
+          <div class="chart-frame">
+            <div id="chart" class="chart"></div>
+            <div id="chartStatus" class="chart-status" hidden></div>
+          </div>
+        </section>
+
+        <section class="detail-band">
+          <div class="detail-panel">
+            <div class="panel-title">信号详情</div>
+            <pre id="signalDetail">{}</pre>
+          </div>
+          <div class="detail-panel">
+            <div class="panel-title">评价结果</div>
+            <div id="evaluationTable" class="table"></div>
+          </div>
+        </section>
+      </section>
+    </main>
+    <script src="/vendor/echarts.min.js"></script>
+    <script src="/dashboard.js"></script>
+  </body>
+</html>

@@ -1,0 +1,5 @@
+Metadata-Version: 2.4
+Name: invest-quant-system
+Version: 0.1.0
+Summary: Research-only short-horizon A-share signal system infrastructure.
+Requires-Python: >=3.11

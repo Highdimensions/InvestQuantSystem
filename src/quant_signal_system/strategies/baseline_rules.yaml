@@ -1,0 +1,4 @@
+breakout_volume_ratio: 1.5
+pullback_threshold: -0.01
+spike_threshold: 0.02
+horizon_seconds: 900

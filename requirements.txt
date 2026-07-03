@@ -1,0 +1,6 @@
+# Default local development and validation dependencies.
+# Real AKShare data pulls are kept in requirements-akshare.txt.
+tzdata>=2024.1; platform_system == "Windows"
+pytest>=8.0
+ruff>=0.6
+pyyaml>=6.0.1

@@ -1,0 +1,3 @@
+# Optional dependencies for real AKShare market data pulls.
+-r requirements.txt
+akshare>=1.16

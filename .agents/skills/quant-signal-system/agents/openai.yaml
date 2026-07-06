@@ -1,0 +1,4 @@
+interface:
+  display_name: "Quant Signal System"
+  short_description: "Design and review short-horizon quant signal systems."
+  default_prompt: "Use this skill to design or review a short-horizon quant signal, backtest, replay, latency evaluation, or shadow-run system."

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Test And Evaluation Plan"
+  short_description: "Plan tests and evaluations for quant and realtime systems."
+  default_prompt: "Use this skill to design unit, replay, backtest correctness, realtime consistency, and failure-recovery tests."

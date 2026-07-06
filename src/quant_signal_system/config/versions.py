@@ -22,6 +22,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import threading
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Mapping
@@ -44,8 +45,17 @@ class _FrozenStrategy:
 
 
 class VersionRegistry:
+    """Thread-safe version registry for strategy and config freeze.
+
+    All write operations are protected by a reentrant lock so that a single
+    thread can nest calls (e.g. freeze → freeze_strategy) without deadlocking.
+    Read-only operations (``is_strategy_frozen`` and ``frozen_strategies``) also
+    acquire the lock to guarantee consistent views of the internal dictionary.
+    """
+
     def __init__(self) -> None:
         self._frozen_strategies: dict[str, _FrozenStrategy] = {}
+        self._lock = threading.RLock()
 
     def freeze(self, versions: Mapping[str, str]) -> ConfigSnapshot:
         encoded = json.dumps(dict(sorted(versions.items())), separators=(",", ":")).encode("utf-8")
@@ -82,45 +92,46 @@ class VersionRegistry:
         if not code_version or not code_version.strip():
             raise MarketDataValidationError("code_version is required")
 
-        existing = self._frozen_strategies.get(strategy_name)
-        if existing is not None:
-            if (
-                existing.strategy_version == strategy_version
-                and existing.parameter_hash == parameter_hash
-                and existing.code_version == code_version
-            ):
-                return StrategyVersion(
-                    strategy_name=strategy_name,
-                    strategy_version=strategy_version,
-                    feature_version="unknown",
-                    parameter_hash=parameter_hash,
-                    code_version=code_version,
-                    created_at=existing.frozen_at,
-                    description="frozen",
-                    status=StrategyStatus.ACTIVE_RESEARCH,
+        with self._lock:
+            existing = self._frozen_strategies.get(strategy_name)
+            if existing is not None:
+                if (
+                    existing.strategy_version == strategy_version
+                    and existing.parameter_hash == parameter_hash
+                    and existing.code_version == code_version
+                ):
+                    return StrategyVersion(
+                        strategy_name=strategy_name,
+                        strategy_version=strategy_version,
+                        feature_version="unknown",
+                        parameter_hash=parameter_hash,
+                        code_version=code_version,
+                        created_at=existing.frozen_at,
+                        description="frozen",
+                        status=StrategyStatus.ACTIVE_RESEARCH,
+                    )
+                raise DuplicateStrategyFreezeError(
+                    f"strategy {strategy_name!r} already frozen with a different identity"
                 )
-            raise DuplicateStrategyFreezeError(
-                f"strategy {strategy_name!r} already frozen with a different identity"
-            )
 
-        now = datetime.now(timezone.utc)
-        self._frozen_strategies[strategy_name] = _FrozenStrategy(
-            name=strategy_name,
-            strategy_version=strategy_version,
-            parameter_hash=parameter_hash,
-            code_version=code_version,
-            frozen_at=now,
-        )
-        return StrategyVersion(
-            strategy_name=strategy_name,
-            strategy_version=strategy_version,
-            feature_version="unknown",
-            parameter_hash=parameter_hash,
-            code_version=code_version,
-            created_at=now,
-            description="frozen",
-            status=StrategyStatus.ACTIVE_RESEARCH,
-        )
+            now = datetime.now(timezone.utc)
+            self._frozen_strategies[strategy_name] = _FrozenStrategy(
+                name=strategy_name,
+                strategy_version=strategy_version,
+                parameter_hash=parameter_hash,
+                code_version=code_version,
+                frozen_at=now,
+            )
+            return StrategyVersion(
+                strategy_name=strategy_name,
+                strategy_version=strategy_version,
+                feature_version="unknown",
+                parameter_hash=parameter_hash,
+                code_version=code_version,
+                created_at=now,
+                description="frozen",
+                status=StrategyStatus.ACTIVE_RESEARCH,
+            )
 
     def is_strategy_frozen(
         self,
@@ -130,26 +141,28 @@ class VersionRegistry:
         parameter_hash: str,
         code_version: str,
     ) -> bool:
-        existing = self._frozen_strategies.get(strategy_name)
-        if existing is None:
-            return False
-        return (
-            existing.strategy_version == strategy_version
-            and existing.parameter_hash == parameter_hash
-            and existing.code_version == code_version
-        )
+        with self._lock:
+            existing = self._frozen_strategies.get(strategy_name)
+            if existing is None:
+                return False
+            return (
+                existing.strategy_version == strategy_version
+                and existing.parameter_hash == parameter_hash
+                and existing.code_version == code_version
+            )
 
     def frozen_strategies(self) -> tuple[StrategyVersion, ...]:
-        return tuple(
-            StrategyVersion(
-                strategy_name=item.name,
-                strategy_version=item.strategy_version,
-                feature_version="unknown",
-                parameter_hash=item.parameter_hash,
-                code_version=item.code_version,
-                created_at=item.frozen_at,
-                description="frozen",
-                status=StrategyStatus.ACTIVE_RESEARCH,
+        with self._lock:
+            return tuple(
+                StrategyVersion(
+                    strategy_name=item.name,
+                    strategy_version=item.strategy_version,
+                    feature_version="unknown",
+                    parameter_hash=item.parameter_hash,
+                    code_version=item.code_version,
+                    created_at=item.frozen_at,
+                    description="frozen",
+                    status=StrategyStatus.ACTIVE_RESEARCH,
+                )
+                for item in self._frozen_strategies.values()
             )
-            for item in self._frozen_strategies.values()
-        )

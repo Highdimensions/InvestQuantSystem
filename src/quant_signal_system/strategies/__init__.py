@@ -11,6 +11,7 @@ The package exposes:
 * `DuplicateStrategyError`, `UnknownStrategyError` (registry errors)
 * `StrategyComposer`, `ConflictPolicy`, `ComposerConflictRecord`
   (multi-strategy scheduling and conflict aggregation)
+* `ComposerDecision`, `ComposerDecisionRepository` (Phase 3: audit trail for decisions)
 
 See `docs/architecture/strategy-plugin-guide.md` for the full onboarding flow.
 """
@@ -22,6 +23,11 @@ from quant_signal_system.strategies.composer import (
     StrategyComposer,
     describe_composer,
     replace_candidate,
+)
+from quant_signal_system.strategies.composer_decision import (
+    ComposerDecision,
+    ComposerDecisionConflictError,
+    ComposerDecisionRepository,
 )
 from quant_signal_system.strategies.metadata import StrategySpec
 from quant_signal_system.strategies.protocol import StrategyRuntime
@@ -44,6 +50,9 @@ __all__ = [
     "DEFAULT_REGISTRY",
     "ComposerConflictError",
     "ComposerConflictRecord",
+    "ComposerDecision",
+    "ComposerDecisionConflictError",
+    "ComposerDecisionRepository",
     "ConflictPolicy",
     "DuplicateStrategyError",
     "LoadedParams",

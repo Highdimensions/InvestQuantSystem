@@ -1,0 +1,4 @@
+interface:
+  display_name: "Architecture Review"
+  short_description: "Review architecture boundaries and risks."
+  default_prompt: "Use this skill to independently review software architecture boundaries, dependency direction, data ownership, failure isolation, and complexity."

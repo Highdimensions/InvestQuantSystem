@@ -1,6 +1,5 @@
-"""Paper portfolio."""
+"""Portfolio module."""
 
-from quant_signal_system.portfolio.paper import PaperPortfolio
+from quant_signal_system.portfolio.ledger import PortfolioLedger
 
-__all__ = ["PaperPortfolio"]
-
+__all__ = ["PortfolioLedger"]

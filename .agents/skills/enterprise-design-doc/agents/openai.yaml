@@ -1,0 +1,4 @@
+interface:
+  display_name: "Enterprise Design Doc"
+  short_description: "Turn rough requirements into reviewable engineering design docs."
+  default_prompt: "Use this skill to transform rough requirements or an early solution into an enterprise-grade engineering design document."

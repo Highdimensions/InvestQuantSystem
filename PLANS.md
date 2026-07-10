@@ -419,6 +419,7 @@ ReconciliationReport.compare(shadow_run_id, replay_run_id) -> ReconciliationResu
 | S-007 | A 股数据源基础设施骨架 | 已完成 | 已新增 `DataSourceProfile`、`MarketBar`/`MarketTick` 契约、Normalizer、版本化内存仓库、quarantine、Replay Source、供应商对账和基础测试 |
 | S-008 | AKShare Adapter | 已完成 | 已新增 `AKShareMarketDataSource`，支持分钟和日线 Bar 拉取、市场本地时间转 UTC、懒加载依赖和 quarantine 输出 |
 | S-009 | 除双源对账外的研究系统 v1 骨架 | 已完成 | 已新增确定性时钟、简化 A 股交易日历、SQLite 行情仓库、单源 AKShare 验收、`SignalEvent`、评价任务、Evaluator、规则策略、回测、模拟持仓、影子对账和批处理报告 |
+| S-010 | Dashboard 多股票观察列表与持久化 | 已完成 | 已新增 `SQLiteWatchlistRepository`、Watchlist API 端点、前端多股票切换与管理 |
 
 ## 9. 决策记录
 
@@ -446,7 +447,7 @@ ReconciliationReport.compare(shadow_run_id, replay_run_id) -> ReconciliationResu
 | RISK-003 | 已确定 | 性能目标没有基准数据 | 影响告警阈值和架构复杂度 | 先记录指标，运行基准后再设阈值 |
 | RISK-004 | 已确定 | Sell 语义容易被误解为做空 | 会高估 A 股策略表现 | 使用 `signal_action` 和 `exposure_effect`，模拟持仓禁止默认负仓 |
 | RISK-005 | 已确定 | OHLC Bar 无法判断同 Bar 内止盈止损先后 | 三重障碍标签可能失真 | 标记 `AMBIGUOUS` 或使用保守策略；需要精确时使用 Tick |
-| RISK-006 | 建议方案 | 过早开发 Dashboard 会挤占核心正确性工作 | 展示先行但事实链路不可信 | Dashboard 只进入 Epic 8 待决策 |
+| RISK-006 | 已确定 | Dashboard 基础版已实现 | 核心链路已稳定，开始增强 Dashboard 功能 | Dashboard 增强遵循非目标约束 |
 | RISK-007 | 建议方案 | 过早引入 ML 会掩盖数据与评价缺陷 | 难以判断问题来源 | ML 只进入 Epic 8 待决策 |
 | RISK-008 | 已确定 | 评价窗口和 close/next-open 规则若事后选择会形成选择性评价 | 信号质量被高估 | 先冻结 `EvaluationPolicy v1`，报告不得混合 policy |
 | RISK-009 | 已确定 | 行业/板块、复权因子、指数成分等外部数据可能带入未来修订 | 特征和市场状态发生数据泄漏 | 增加 `AsOfDataset` / `ReferenceDataRepository` 和未来修订负例 fixture |

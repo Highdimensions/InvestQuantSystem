@@ -20,6 +20,7 @@ from quant_signal_system.dashboard.dto import (
     json_ready,
 )
 from quant_signal_system.dashboard.shadow import ShadowRunManager, _ensure_default_strategies_registered
+from quant_signal_system.dashboard.watchlist_repository import SQLiteWatchlistRepository
 from quant_signal_system.market_data.sqlite_repository import SQLiteMarketDataRepository
 from quant_signal_system.signals.sqlite_repository import SQLiteSignalRepository
 
@@ -28,6 +29,7 @@ from quant_signal_system.signals.sqlite_repository import SQLiteSignalRepository
 class DashboardConfig:
     market_db: Path
     signal_db: Path
+    watchlist_db: Path
     host: str = "127.0.0.1"
     port: int = 8000
     static_dir: Path = Path(__file__).with_name("static")
@@ -38,6 +40,7 @@ class DashboardApp:
     config: DashboardConfig
     market_repository: SQLiteMarketDataRepository
     signal_repository: SQLiteSignalRepository
+    watchlist_repository: SQLiteWatchlistRepository
     shadow_runs: ShadowRunManager
 
 
@@ -45,12 +48,15 @@ def create_app(config: DashboardConfig) -> DashboardApp:
     _ensure_default_strategies_registered()
     config.market_db.parent.mkdir(parents=True, exist_ok=True)
     config.signal_db.parent.mkdir(parents=True, exist_ok=True)
+    config.watchlist_db.parent.mkdir(parents=True, exist_ok=True)
     market_repository = SQLiteMarketDataRepository(config.market_db)
     signal_repository = SQLiteSignalRepository(config.signal_db)
+    watchlist_repository = SQLiteWatchlistRepository(config.watchlist_db)
     return DashboardApp(
         config=config,
         market_repository=market_repository,
         signal_repository=signal_repository,
+        watchlist_repository=watchlist_repository,
         shadow_runs=ShadowRunManager(
             market_repository=market_repository,
             signal_repository=signal_repository,
@@ -120,6 +126,58 @@ def _handler_factory(app: DashboardApp) -> type[BaseHTTPRequestHandler]:
                 if parsed.path.startswith("/api/shadow-runs/") and parsed.path.endswith("/stop"):
                     run_id = parsed.path.split("/")[3]
                     self._json(app.shadow_runs.stop_run(run_id).to_dict())
+                    return
+                if parsed.path == "/api/watchlist":
+                    body = self._read_json()
+                    action = (body.get("action") or "").strip().lower()
+                    if action == "add":
+                        symbol = (body.get("symbol") or "").strip()
+                        if not symbol:
+                            self._json({"error": "symbol is required"}, status=HTTPStatus.BAD_REQUEST)
+                            return
+                        entry = app.watchlist_repository.add(
+                            symbol=symbol,
+                            name=body.get("name"),
+                            notes=body.get("notes"),
+                        )
+                        self._json(
+                            {
+                                "symbol": entry.symbol,
+                                "name": entry.name,
+                                "display_order": entry.display_order,
+                                "added_at": entry.added_at.isoformat(),
+                                "notes": entry.notes,
+                            }
+                        )
+                        return
+                    if action == "remove":
+                        symbol = (body.get("symbol") or "").strip()
+                        if not symbol:
+                            self._json({"error": "symbol is required"}, status=HTTPStatus.BAD_REQUEST)
+                            return
+                        removed = app.watchlist_repository.remove(symbol)
+                        self._json({"removed": removed})
+                        return
+                    if action == "update":
+                        symbol = (body.get("symbol") or "").strip()
+                        if not symbol:
+                            self._json({"error": "symbol is required"}, status=HTTPStatus.BAD_REQUEST)
+                            return
+                        if "name" in body:
+                            app.watchlist_repository.update_name(symbol, body.get("name"))
+                        if "notes" in body:
+                            app.watchlist_repository.update_notes(symbol, body.get("notes"))
+                        self._json({"updated": True})
+                        return
+                    if action == "reorder":
+                        symbols = body.get("symbols", [])
+                        if not isinstance(symbols, list):
+                            self._json({"error": "symbols must be a list"}, status=HTTPStatus.BAD_REQUEST)
+                            return
+                        app.watchlist_repository.reorder(symbols)
+                        self._json({"reordered": True})
+                        return
+                    self._json({"error": "unknown action"}, status=HTTPStatus.BAD_REQUEST)
                     return
                 self._json({"error": "not found"}, status=HTTPStatus.NOT_FOUND)
             except KeyError as exc:
@@ -201,6 +259,22 @@ def _handler_factory(app: DashboardApp) -> type[BaseHTTPRequestHandler]:
             if path == "/api/shadow-runs":
                 self._json({"shadow_runs": app.shadow_runs.list_runs()})
                 return
+            if path == "/api/watchlist":
+                self._json(
+                    {
+                        "watchlist": [
+                            {
+                                "symbol": entry.symbol,
+                                "name": entry.name,
+                                "display_order": entry.display_order,
+                                "added_at": entry.added_at.isoformat(),
+                                "notes": entry.notes,
+                            }
+                            for entry in app.watchlist_repository.list()
+                        ]
+                    }
+                )
+                return
             self._json({"error": "not found"}, status=HTTPStatus.NOT_FOUND)
 
         def _serve_static(self, path: str) -> None:
@@ -280,6 +354,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Run the local research signal dashboard.")
     parser.add_argument("--market-db", type=Path, default=Path("reports/dashboard/market.db"))
     parser.add_argument("--signal-db", type=Path, default=Path("reports/dashboard/signals.db"))
+    parser.add_argument("--watchlist-db", type=Path, default=Path("reports/dashboard/watchlist.db"))
     parser.add_argument("--host", default="127.0.0.1")
     parser.add_argument("--port", type=int, default=8000)
     args = parser.parse_args()
@@ -287,6 +362,7 @@ def main() -> None:
         DashboardConfig(
             market_db=args.market_db,
             signal_db=args.signal_db,
+            watchlist_db=args.watchlist_db,
             host=args.host,
             port=args.port,
         )

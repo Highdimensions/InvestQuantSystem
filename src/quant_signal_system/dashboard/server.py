@@ -19,7 +19,7 @@ from quant_signal_system.dashboard.dto import (
     dto_dict,
     json_ready,
 )
-from quant_signal_system.dashboard.shadow import ShadowRunManager
+from quant_signal_system.dashboard.shadow import ShadowRunManager, _ensure_default_strategies_registered
 from quant_signal_system.market_data.sqlite_repository import SQLiteMarketDataRepository
 from quant_signal_system.signals.sqlite_repository import SQLiteSignalRepository
 
@@ -42,6 +42,7 @@ class DashboardApp:
 
 
 def create_app(config: DashboardConfig) -> DashboardApp:
+    _ensure_default_strategies_registered()
     config.market_db.parent.mkdir(parents=True, exist_ok=True)
     config.signal_db.parent.mkdir(parents=True, exist_ok=True)
     market_repository = SQLiteMarketDataRepository(config.market_db)
@@ -84,11 +85,31 @@ def _handler_factory(app: DashboardApp) -> type[BaseHTTPRequestHandler]:
                 parsed = urlparse(self.path)
                 if parsed.path == "/api/shadow-runs":
                     body = self._read_json()
+                    symbol = (body.get("symbol") or "").strip()
+                    if not symbol:
+                        self._json({"error": "symbol is required"}, status=HTTPStatus.BAD_REQUEST)
+                        return
+                    from_time_str = body.get("from_time")
+                    to_time_str = body.get("to_time")
+                    if not from_time_str or not to_time_str:
+                        self._json(
+                            {"error": "from_time and to_time are required"},
+                            status=HTTPStatus.BAD_REQUEST,
+                        )
+                        return
+                    from_time = _parse_time(str(from_time_str))
+                    to_time = _parse_time(str(to_time_str))
+                    if from_time is None or to_time is None:
+                        self._json(
+                            {"error": "from_time and to_time must be valid ISO timestamps with timezone"},
+                            status=HTTPStatus.BAD_REQUEST,
+                        )
+                        return
                     state = app.shadow_runs.start_run(
-                        symbol=str(body["symbol"]),
+                        symbol=symbol,
                         timeframe=str(body.get("timeframe", "1m")),
-                        from_time=_parse_time(str(body["from_time"])),
-                        to_time=_parse_time(str(body["to_time"])),
+                        from_time=from_time,
+                        to_time=to_time,
                         data_source_version=str(
                             body.get("data_source_version", "akshare-exploration-v1")
                         ),
@@ -246,7 +267,9 @@ def _optional_time(query: dict[str, list[str]], name: str) -> datetime | None:
     return None if value is None else _parse_time(value)
 
 
-def _parse_time(value: str) -> datetime:
+def _parse_time(value: str | None) -> datetime | None:
+    if not value:
+        return None
     parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
     if parsed.tzinfo is None or parsed.utcoffset() is None:
         raise ValueError("time values must include timezone")

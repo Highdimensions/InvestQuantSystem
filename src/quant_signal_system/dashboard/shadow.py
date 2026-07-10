@@ -27,9 +27,40 @@ from quant_signal_system.signals.service import SignalService
 from quant_signal_system.signals.sqlite_repository import SQLiteSignalRepository
 from quant_signal_system.strategies.composer import ConflictPolicy, StrategyComposer
 from quant_signal_system.strategies.registry import StrategyRegistry, DEFAULT_REGISTRY
+from quant_signal_system.strategies.runtime import RuleStrategyRuntime
+from quant_signal_system.strategies._examples.momentum_v1 import MomentumV1Strategy
 from quant_signal_system.time.clock import SystemClock
 
 DEFAULT_STRATEGY_NAMES: tuple[str, ...] = ("baseline-rules",)
+
+_STRATEGIES_BOOTSTRAPPED = False
+
+
+def _ensure_default_strategies_registered() -> None:
+    """Register built-in strategies into DEFAULT_REGISTRY once per process."""
+    global _STRATEGIES_BOOTSTRAPPED  # noqa: PLW0603
+    if _STRATEGIES_BOOTSTRAPPED:
+        return
+    _STRATEGIES_BOOTSTRAPPED = True
+    import pathlib
+    import quant_signal_system
+
+    pkg_root = pathlib.Path(quant_signal_system.__file__).parent
+
+    yaml_path = pkg_root / "strategies" / "baseline_rules.yaml"
+    DEFAULT_REGISTRY.register(
+        RuleStrategyRuntime,
+        yaml_path=yaml_path,
+        strategy_version="baseline-rules-v1",
+        code_version="research-code-v1",
+    )
+
+    DEFAULT_REGISTRY.register(
+        MomentumV1Strategy,
+        params={"return_threshold": 0.005, "horizon_seconds": 900},
+        strategy_version="momentum-v1",
+        code_version="research-code-v1",
+    )
 
 
 def _freeze_key(name: str, version: str, parameter_hash: str, code_version: str) -> str:

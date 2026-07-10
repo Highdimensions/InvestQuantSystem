@@ -21,7 +21,7 @@ from datetime import datetime, timezone
 from quant_signal_system.config.data_source import akshare_exploration_profile
 from quant_signal_system.contracts.market import MarketBar
 from quant_signal_system.features.engine import RollingFeatureEngine
-from quant_signal_system.market_data.akshare_source import AKShareMarketDataSource
+from quant_signal_system.market_data.sina_source import SinaMarketDataSource
 from quant_signal_system.market_data.sqlite_repository import SQLiteMarketDataRepository
 from quant_signal_system.signals.service import SignalService
 from quant_signal_system.signals.sqlite_repository import SQLiteSignalRepository
@@ -118,11 +118,14 @@ class ShadowRunManager:
         timeframe: str,
         from_time: datetime,
         to_time: datetime,
-        data_source_version: str = "akshare-exploration-v1",
+        data_source_version: str = "sina-research-v1",
         as_of_version: str = "asof-research-v1",
         strategy_names: tuple[str, ...] | None = None,
         conflict_policy: ConflictPolicy = ConflictPolicy.PRIORITY_MAX_CONFIDENCE,
     ) -> ShadowRunState:
+        # Ensure strategies are registered before starting
+        _ensure_default_strategies_registered()
+
         run_id = uuid.uuid4().hex[:16]
         names = strategy_names or self._default_strategy_names
         if not names:
@@ -184,7 +187,7 @@ class ShadowRunManager:
         try:
             self._set_status(state.run_id, "RUNNING")
             bars = list(
-                AKShareMarketDataSource(
+                SinaMarketDataSource(
                     profile=akshare_exploration_profile(
                         frequency=state.timeframe,
                         data_source_version=state.data_source_version,

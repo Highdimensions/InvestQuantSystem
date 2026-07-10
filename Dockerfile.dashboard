@@ -1,0 +1,42 @@
+# Dashboard HTTP server
+FROM python:3.12-slim
+
+WORKDIR /app
+
+# Install system dependencies for akshare and other packages
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy application code first (needed for editable install)
+COPY src ./src
+COPY pyproject.toml ./
+
+# Install Python dependencies
+RUN pip install --no-cache-dir -e .
+COPY docs ./docs
+
+# Create data directory for SQLite databases
+# Fix permissions for shared volume
+RUN mkdir -p /app/reports/dashboard && chmod 777 /app/reports/dashboard
+
+# Expose dashboard port
+EXPOSE 8000
+
+# Environment variables
+ENV PYTHONPATH=/app/src
+ENV PYTHONUNBUFFERED=1
+# Use curl_cffi backend for AKShare HTTP requests (better compatibility)
+ENV AKSHARE_HTTP_BACKEND=curl_cffi
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD curl -f http://localhost:8000/api/health || exit 1
+
+# Run the dashboard server
+CMD ["python", "-m", "quant_signal_system.dashboard.server", \
+     "--market-db", "reports/dashboard/market.db", \
+     "--signal-db", "reports/dashboard/signals.db", \
+     "--watchlist-db", "reports/dashboard/watchlist.db", \
+     "--host", "0.0.0.0", \
+     "--port", "8000"]

@@ -1,0 +1,57 @@
+# Git
+.git
+.gitignore
+
+# Python
+__pycache__
+*.py[cod]
+*$py.class
+*.so
+.Python
+.pytest_cache
+.mypy_cache
+.ruff_cache
+*.egg-info
+.eggs
+dist
+build
+
+# Virtual environments
+venv
+.venv
+env
+.env
+
+# IDE
+.idea
+.vscode
+*.swp
+*.swo
+*~
+
+# Documentation build outputs
+docs/_build
+docs/.doctrees
+
+# Test files
+tests
+.coverage
+htmlcov
+
+# Local development files
+*.db
+*.log
+*.tmp
+temp_*
+
+# Node (if any frontend assets)
+node_modules
+
+# CI/CD
+.github
+.gitlab-ci.yml
+.travis.yml
+
+# Temporary files
+.DS_Store
+Thumbs.db

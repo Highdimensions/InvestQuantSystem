@@ -65,6 +65,8 @@ def create_app(config: DashboardConfig) -> DashboardApp:
 
 
 def run_dashboard(config: DashboardConfig) -> None:
+    # Ensure strategies are registered before starting the server
+    _ensure_default_strategies_registered()
     app = create_app(config)
     handler = _handler_factory(app)
     server = ThreadingHTTPServer((config.host, config.port), handler)
@@ -117,7 +119,7 @@ def _handler_factory(app: DashboardApp) -> type[BaseHTTPRequestHandler]:
                         from_time=from_time,
                         to_time=to_time,
                         data_source_version=str(
-                            body.get("data_source_version", "akshare-exploration-v1")
+                            body.get("data_source_version", "sina-research-v1")
                         ),
                         as_of_version=str(body.get("as_of_version", "asof-research-v1")),
                     )

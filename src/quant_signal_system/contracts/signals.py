@@ -133,11 +133,21 @@ class SignalEvent:
 
 
 def deterministic_signal_id(candidate: SignalCandidate, *, event_time: datetime) -> str:
+    """Generate a deterministic signal ID based on signal content.
+
+    The ID is derived from the signal's semantic content (symbol, strategy,
+    market data time, parameters, data versions), NOT from system timestamps.
+    This ensures idempotency: the same strategy producing the same signal
+    for the same market data will always produce the same signal_id, enabling
+    natural deduplication across shadow runs.
+
+    The event_time parameter is accepted for API compatibility but is NOT
+    included in the hash, as it is a system timestamp that varies between runs.
+    """
     payload = {
         "symbol": candidate.symbol,
         "direction": int(candidate.direction),
         "market_data_time": candidate.market_data_time.isoformat(),
-        "event_time": event_time.isoformat(),
         "strategy_name": candidate.strategy_name,
         "strategy_version": candidate.strategy_version,
         "feature_version": candidate.feature_version,

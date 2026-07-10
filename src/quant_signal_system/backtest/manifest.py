@@ -21,15 +21,22 @@ from quant_signal_system.contracts.market import MarketDataValidationError
 
 @dataclass(frozen=True, slots=True)
 class RunWarning:
-    """A warning raised during a backtest run."""
+    """A warning raised during a backtest run.
 
-    schema_version: str = "run-warning-v1"
+    Schema version v2 adds ``event_sequence`` and ``current_virtual_time`` fields
+    to align with the structured logging context defined in
+    ``docs/architecture/backtest-observability.md`` Section 2.1.
+    """
+
+    schema_version: str = "run-warning-v2"
     warning_code: str = ""
     severity: str = ""  # "info" | "warn" | "error"
     message: str = ""
     affected_symbols: tuple[str, ...] = field(default_factory=tuple, kw_only=True)
     affected_time_range: tuple[datetime, datetime] | None = field(default=None, kw_only=True)
     count: int = field(default=1, kw_only=True)
+    event_sequence: int | None = field(default=None, kw_only=True)
+    current_virtual_time: datetime | None = field(default=None, kw_only=True)
 
 
 @dataclass(frozen=True, slots=True)

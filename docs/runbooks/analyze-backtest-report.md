@@ -1,57 +1,51 @@
-# Runbook: 分析回测报告
+# Runbook: 回测报告解读
 
-## 1. 读取报告
+> 适用文档：`docs/architecture/testing-and-evaluation.md` 第 6 节。
 
-```bash
-cat artifacts/runs/run_001/report.md
-```
+本指南说明如何阅读产出的 backtest 报告，避免把回测结果误读为收益承诺。
 
-报告包含以下章节：
+## 1. 报告入口
 
-1. **Summary**：运行摘要（run_id、时间范围、信号数）
-2. **Portfolio Metrics**：组合层指标（收益、Sharpe、回撤）
-3. **Signal Metrics by Bucket**：信号层指标（按 strategy/symbol/direction 分桶）
-4. **Warnings**：所有 RunWarning 列表
+每次 backtest 都会在 `output_dir` 下生成 `manifest.json` + 报告集。报告集中常用条目：
 
-## 2. 检查必要字段
-
-| 字段 | 来源 |
+| 文件 | 内容 |
 | --- | --- |
-| run_id | manifest.json |
-| strategy_versions | manifest.json |
-| from_time / to_time | manifest.json |
-| sample_count | report.md |
-| unexecutable_count | report.md |
-| warnings | manifest.json |
+| `report.html` / `report.md` | 总览报告 |
+| `signals.jsonl` | 本次 run 产生的全部 SignalEvent |
+| `evaluations.jsonl` | 三重障碍、MFE/MAE 评价明细 |
+| `event_chain.jsonl` | 完整 bar→signal→fill→evaluation 事件链 |
 
-## 3. 常见分析问题
+## 2. 阅读顺序
 
-### 3.1 样本量过小
+1. **Manifest 摘要**：`run_id`、`run_status`、`duration_seconds`、各 `total_*` 计数。
+2. **数据质量**：`missing_bar_count`、`duplicate_bar_count`、`out_of_order_bar_count`、warnings。
+3. **信号流水线**：`signals_generated_total` 与 `signals_rejected_total` 的比例。
+4. **执行链路**：`orders_accepted_total / orders_total` 与 `t+1_blocked_total`。
+5. **评价输出**：Net Return 分布、Hit Rate、MFE/MAE ratio、三重障碍 label 统计。
 
-- 调大 from_time / to_time 范围
-- 增加 universe symbols
-- 检查 `unexecutable_count` 是否过高
+## 3. 解读约束
 
-### 3.2 命中率异常
+- 报告中所有收益数字**仅供策略对比使用**：
+  - 不代表未来收益；
+  - 不代表真实交易可获得收益（不含隔夜滑点、行情断流等）；
+  - 在参数估计期内会包含 **前视偏差风险**，必须配合 replay-golden 双重验证。
+- 评价字段 `time_to_mfe_seconds`、`triple_barrier_label` 用于策略结构诊断，**不要**直接当作"持仓时长指引"。
+- `cost_model_version` 必须与回测使用的成本模型一致，否则净收益失真。
+- 当运行状态为 `failed` / `partial` / `cancelled` 时，不要以部分结果得出策略结论。
 
-- 检查 strategy 参数哈希（parameter_hash）
-- 检查 signal/evaluation 版本
+## 4. 常见误读举例
 
-### 3.3 最大回撤过大
+| 误读 | 正确做法 |
+| --- | --- |
+| Net Return 高 ⇒ 准备实盘 | Net Return 是历史；上线前需 shadow 运行 ≥ 30 天 |
+| Signal 多 ⇒ 策略好 | 看 Hit Rate 与盈亏比 |
+| MFE 高 ⇒ 收益高 | MFE 仅表示最佳可达收益，需结合 MAE 与执行率 |
+| Triple Barrier +1 占比高 ⇒ 策略好 | 必须配合 Period 长度与 hit ratio 综合判读 |
 
-- 检查 PortfolioMetrics 的 final_value
-- 确认 cost_model / fill_model 设置正确
+## 5. 交付前自检
 
-## 4. 与历史对比
-
-```bash
-python -m quant_signal_system.cli.compare_runs \
-  --run-id-a run_baseline \
-  --run-id-b run_experiment \
-  --artifact-dir artifacts/runs
-```
-
-输出 JSON 中：
-
-- `comparable = true`：两次运行可直接对比
-- `comparable = false`：spec_hash 不同，需要重新生成基线
+- [ ] 报告中的 `deterministic_check_passed = true`
+- [ ] `expected_assertions` 全部 `passed = true`
+- [ ] 当前版本与上一黄金用例（`make test-replay-golden`）一致
+- [ ] alert 列表为空或仅含已豁免项
+- [ ] 报告已 attach 到对应 run_id 的工单

@@ -221,7 +221,14 @@ class BacktestDebugConfig:
 | P3 | `backtest_report_duration_seconds > TBD` | 排期修复 | 否 |
 | P3 | `backtest_orders_rejected_total` 占比超过 TBD | 排期修复 | 否 |
 
-**已确定**：具体阈值待 Phase 7 基准测试后确定，不得在阈值未知时声称 P1/P2 告警已配置。
+**已确定**：具体阈值待 Phase 7 基准测试后确定，**当前未填值，TBD 不等于可上线**。
+
+阶段 1 已实现告警规则骨架（`AlertRule` + `AlertEvaluator`），阈值以 `TBD`（`float("nan")`）标记，待 `docs/decisions/open-questions.md` 中待决议题通过后回填。下列已确定/已实现：
+
+- 已确定：告警等级分级、必须字段（`run_id`、`metric`、`runbook_link`、`pause_interpretation`）
+- 已确定：`SignalEvent` 评价持久化失败的告警条件 `backtest_signal_persist_failure_total > 0`（阈值 0 = 必报）
+- 已确定：determinism 违例告警（`_determinism_violation == 0` 触发）
+- 待决策：缺失 Bar / 评价积压的阈值
 
 ### 5.2 告警格式
 

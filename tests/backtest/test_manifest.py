@@ -37,8 +37,22 @@ class TestRunWarning:
             count=3,
         )
         d = dataclasses.asdict(w)
-        assert d["schema_version"] == "run-warning-v1"
+        assert d["schema_version"] == "run-warning-v2"
         assert d["warning_code"] == "DATA_INTERRUPTION"
+
+    def test_v2_fields(self) -> None:
+        """v2 schema adds event_sequence and current_virtual_time fields."""
+        from datetime import datetime, timezone
+        ts = datetime(2025, 6, 1, 9, 30, tzinfo=timezone.utc)
+        w = RunWarning(
+            warning_code="OUT_OF_ORDER_BAR",
+            severity="warn",
+            message="bar arrived late",
+            event_sequence=42,
+            current_virtual_time=ts,
+        )
+        assert w.event_sequence == 42
+        assert w.current_virtual_time == ts
 
 
 class TestArtifactRef:
